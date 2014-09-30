@@ -7,12 +7,6 @@ AC_CONFIG_MACRO_DIR([m4])
 
 AM_MAINTAINER_MODE
 
-AC_DISABLE_STATIC
-LT_PREREQ([2.4.2])
-LT_INIT([dlopen])
-LT_LANG([C])
-AC_SUBST([LIBTOOL_DEPS])
-
 # Check for OpenSSL
 AH_TEMPLATE(HAVE_LIBCRYPT, [libcrypt library present])
 AC_ARG_WITH(crypt,
