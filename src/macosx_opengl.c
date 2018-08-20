@@ -37,6 +37,7 @@ so, delete this exception statement from your version.
 #include <CoreFoundation/CoreFoundation.h>
 #include <ApplicationServices/ApplicationServices.h>
 
+#include "config.h"
 #include <rfb/rfb.h>
 #if HAVE_MACOSX_OPENGL_H
 #include <OpenGL/OpenGL.h>

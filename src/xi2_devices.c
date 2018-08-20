@@ -23,8 +23,10 @@
 */
 
 #include <string.h>
+#ifdef HAVE_X11
 #include <X11/Xproto.h> 
 #include <X11/keysym.h> 
+#endif
 
 #include "x11vnc.h" 
 #include "cursor.h"
@@ -60,7 +62,7 @@ int createMD(Display* dpy, char* name)
   XIDeviceInfo	*devinfo;
   int		num_devices, i;
   char handle[256]; /* device name */
-  snprintf(handle, 256, "%s pointer", name);
+  snprintf(handle, sizeof handle, "%s pointer", name);
 
   c.type = XIAddMaster;
   c.name = name;

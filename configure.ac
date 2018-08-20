@@ -1,13 +1,16 @@
 # Process this file with autoconf to produce a configure script.
-AC_INIT(x11vnc, 0.9.14, https://github.com/LibVNC/x11vnc)
+AC_INIT(x11vnc, 0.9.15, https://github.com/LibVNC/x11vnc)
 AM_INIT_AUTOMAKE([subdir-objects])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AM_CONFIG_HEADER(config.h)
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_MAINTAINER_MODE
+AM_MAINTAINER_MODE([enable])
 
+AC_PROG_CC
 AC_PROG_SED
+PKG_PROG_PKG_CONFIG
+
 
 # some OS's need both -lssl and -lcrypto on link line:
 AH_TEMPLATE(HAVE_LIBCRYPTO, [openssl libcrypto library present])
@@ -59,12 +62,11 @@ AC_SUBST(CRYPT_LIBS)
 AH_TEMPLATE(HAVE_X509_PRINT_EX_FP, [open ssl X509_print_ex_fp available])
 if test "x$with_ssl" != "xno"; then
 	if test "x$HAVE_LIBCRYPTO" = "xtrue"; then
-		AC_CHECK_LIB(ssl, SSL_library_init,
+		PKG_CHECK_MODULES(OPENSSL, [openssl >= 1.0.0],
 			SSL_LIBS="-lssl -lcrypto"
-			[AC_DEFINE(HAVE_LIBSSL) HAVE_LIBSSL="true"], ,
-			-lcrypto)
+			[AC_DEFINE(HAVE_LIBSSL) HAVE_LIBSSL="true"], ,)
 	else
-		AC_CHECK_LIB(ssl, SSL_library_init,
+		PKG_CHECK_MODULES(OPENSSL, [openssl >= 1.0.0],
 			SSL_LIBS="-lssl"
 			[AC_DEFINE(HAVE_LIBSSL) HAVE_LIBSSL="true"], ,)
 	fi

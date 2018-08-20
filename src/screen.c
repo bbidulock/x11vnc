@@ -1206,10 +1206,10 @@ void vnc_reflect_got_update(rfbClient *cl, int x, int y, int w, int h) {
 void vnc_reflect_got_cursorshape(rfbClient *cl, int xhot, int yhot, int width, int height, int bytesPerPixel) {
 	static int serial = 1;
 	int i, j;
-	char *pixels = NULL;
-	unsigned long r, g, b;
-	unsigned int ui = 0;
-	unsigned long red_mask, green_mask, blue_mask;
+	uint32_t *pixels = NULL;
+	uint32_t r, g, b;
+	uint32_t ui = 0;
+	uint32_t red_mask, green_mask, blue_mask;
 
 	if (cl) {}
 	if (unixpw_in_progress) {
@@ -1230,21 +1230,20 @@ void vnc_reflect_got_cursorshape(rfbClient *cl, int xhot, int yhot, int width, i
 	green_mask = (client->format.greenMax << client->format.greenShift);
 	blue_mask  = (client->format.blueMax  << client->format.blueShift);
 
-	pixels = (char *)malloc(4*width*height);
+	pixels = (uint32_t *)malloc(4*width*height);
 	for (j=0; j<height; j++) {
 		for (i=0; i<width; i++) {
-			unsigned int* uip;
 			unsigned char* uic;
 			int m;
 			if (bytesPerPixel == 1) {
-				unsigned char* p = (unsigned char *) client->rcSource;
-				ui = (unsigned long) *(p + j * width + i);
+				uint8_t* p = (uint8_t *) client->rcSource;
+				ui = (uint32_t) *(p + j * width + i);
 			} else if (bytesPerPixel == 2) {
-				unsigned short* p = (unsigned short *) client->rcSource;
-				ui = (unsigned long) *(p + j * width + i);
+				uint16_t* p = (uint16_t *) client->rcSource;
+				ui = (uint32_t) *(p + j * width + i);
 			} else if (bytesPerPixel == 4) {
-				unsigned int* p = (unsigned int *) client->rcSource;
-				ui = (unsigned long) *(p + j * width + i);
+				uint32_t* p = (uint32_t *) client->rcSource;
+				ui = (uint32_t) *(p + j * width + i);
 			}
 			r = (red_mask   & ui) >> client->format.redShift;
 			g = (green_mask & ui) >> client->format.greenShift;
@@ -1261,12 +1260,11 @@ void vnc_reflect_got_cursorshape(rfbClient *cl, int xhot, int yhot, int width, i
 			if (m) {
 				ui |= 0xff000000;
 			}
-			uip = (unsigned int *)pixels;
-			*(uip + j * width + i) = ui;
+			*(pixels + j * width + i) = ui;
 		}
 	}
 
-	store_cursor(serial++, (unsigned long*) pixels, width, height, 32, xhot, yhot);
+	store_cursor(serial++, pixels, width, height, 32, xhot, yhot);
 	free(pixels);
 	set_cursor(cursor_x, cursor_y, get_which_cursor());
 }
@@ -2455,7 +2453,6 @@ XImage *initialize_xdisplay_fb(void) {
 	char *vis_str = visual_str;
 	int try = 0, subwin_tries = 3;
 	XErrorHandler old_handler = NULL;
-	int subwin_bs;
 
 	if (raw_fb_str) {
 		return initialize_raw_fb(0);
@@ -2571,8 +2568,6 @@ if (0) fprintf(stderr, "vis_str %s\n", vis_str ? vis_str : "notset");
 		}
 		dpy_x = wdpy_x = attr.width;
 		dpy_y = wdpy_y = attr.height;
-
-		subwin_bs = attr.backing_store;
 
 		/* this may be overridden via visual_id below */
 		default_visual = attr.visual;
@@ -2747,7 +2742,9 @@ if (0) fprintf(stderr, "DefaultDepth: %d  visial_id: %d\n", depth, (int) visual_
 		trapped_xerror = 0;
 
 	} else if (fb == NULL) {
+#if HAVE_LIBXRANDR
 		XEvent xev;
+#endif
 		rfbLog("initialize_xdisplay_fb: *** fb creation failed: 0x%x try: %d\n", fb, try);
 #if HAVE_LIBXRANDR
 		if (xrandr_present && xrandr_base_event_type) {
@@ -3793,6 +3790,7 @@ void announce(int lport, int ssl, char *iface) {
 	}
 
 	if (iface != NULL && *iface != '\0' && strcmp(iface, "any")) {
+		free(host);
 		host = iface;
 	}
 	if (host != NULL) {
@@ -3832,12 +3830,16 @@ void announce(int lport, int ssl, char *iface) {
 			rfbLog("possible alias:    %s::%d\n",
 			    host, lport);
 		}
+
+		if (host != iface)
+			free(host);
 	}
 }
 
 static void announce_http(int lport, int ssl, char *iface, char *extra) {
-	
+	/* Result of this_host is allocated memory and must be freed. */
 	char *host = this_host();
+	char *phost = host;
 	char *jvu;
 	int http = 0;
 
@@ -3855,16 +3857,17 @@ static void announce_http(int lport, int ssl, char *iface, char *extra) {
 	}
 
 	if (iface != NULL && *iface != '\0' && strcmp(iface, "any")) {
-		host = iface;
+		phost = iface;
 	}
 	if (http && getenv("X11VNC_HTTP_LISTEN_LOCALHOST")) {
-		host = "localhost";
+		phost = "localhost";
 	}
-	if (host != NULL) {
+	if (phost != NULL) {
 		if (! inetd) {
-			fprintf(stderr, "%s://%s:%d/%s\n", jvu, host, lport, extra);
+			fprintf(stderr, "%s://%s:%d/%s\n", jvu, phost, lport, extra);
 		}
 	}
+	free(host);
 }
 
 void do_announce_http(void) {
@@ -3941,8 +3944,9 @@ void do_mention_java_urls(void) {
 void set_vnc_desktop_name(void) {
 	sprintf(vnc_desktop_name, "unknown");
 	if (inetd) {
-		sprintf(vnc_desktop_name, "%s/inetd-no-further-clients",
-		    this_host());
+		char *host = this_host();
+		sprintf(vnc_desktop_name, "%s/inetd-no-further-clients", host);
+		free(host);
 	}
 	if (remote_direct) {
 		return;
@@ -4033,14 +4037,12 @@ static void check_cursor_changes(void) {
 
 	if (cursor_changes) {
 		double tm, max_push = 0.125, multi_push = 0.01, wait = 0.02;
-		int cursor_shape, dopush = 0, link, latency, netrate;
+		int dopush = 0, link, latency, netrate;
 
 		if (! all_clients_initialized()) {
 			/* play it safe */
 			return;
 		}
-
-		if (0) cursor_shape = cursor_shape_updates_clients(screen);
 	
 		dtime0(&tm);
 		link = link_rate(&latency, &netrate);

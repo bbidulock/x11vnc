@@ -43,10 +43,10 @@ so, delete this exception statement from your version.
 #include "keyboard.h"
 #include "macosx.h"
 
-#if LIBVNCSERVER_HAVE_SYS_IOCTL_H
+#if HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
 #endif
-#if LIBVNCSERVER_HAVE_LINUX_FB_H
+#if HAVE_LINUX_FB_H
 #include <linux/fb.h>
 #endif
 
@@ -178,8 +178,8 @@ char *console_guess(char *str, int *fd) {
 	rfbLog("console_guess: file is %s\n", file);
 
 	if (! atparms) {
-#if LIBVNCSERVER_HAVE_LINUX_FB_H
-#if LIBVNCSERVER_HAVE_SYS_IOCTL_H
+#if HAVE_LINUX_FB_H
+#if HAVE_SYS_IOCTL_H
 		struct fb_var_screeninfo var_info;
 		int d = open(file, O_RDWR);
 		if (d >= 0) {
@@ -356,7 +356,7 @@ void console_key_command(rfbBool down, rfbKeySym keysym, rfbClientPtr client) {
 			keysym -= 0xFF80;
 		}
 	}
-#if LIBVNCSERVER_HAVE_SYS_IOCTL_H && defined(TIOCSTI)
+#if HAVE_SYS_IOCTL_H && defined(TIOCSTI)
 	if (keysym < 0x100) {
 		if (ioctl(pipeinput_cons_fd, TIOCSTI, &keysym) != -1) {
 			return;
